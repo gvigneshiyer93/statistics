@@ -1,0 +1,375 @@
+---
+title: "MATH1324 Assignment 2"
+subtitle: Supermarket Price Wars
+output:
+  html_document:
+    df_print: paged
+---
+
+## Group/Individual Details
+
+• Aasrita Kalahasti(s3800189)
+
+• Vignesh Gopalakrishnan(s3795594)
+
+• Kanishka Tamang (s33756188)
+
+## Executive Statement
+
+Purpose of Investigation:
+
+• The objective of the report is to understand if prices of Coles and Woolworths are               statistically different and to try arriving at a conclusion as to which one is cheaper.
+
+• The data used for analysis has been collected from http://www.grocerycop.com.au/products, it's   a website that compares different product's prices in Coles and Woolworths. Hence, choosing      this website ensures that the products are matched.
+
+• Actual price of each product has been taken into account because both stores don't run           discounts of same products at the same given point of time. 
+
+Sample Description:
+
+• The sample has 269 observations consiting of 4 variables: category, product, Coles and           Woolworths.
+
+• The data is spread across 9 categories.
+
+• Data collection has been done by each group member and collecting about 30 observations from     each category has ensured randomness.
+
+• The products chosen are exactly the same in terms of quality, quantity and brand.
+
+• An adequate sample size is different in one's perspective, collecting atleast 30                 observations from each category in order to reduce standard error seemed adequate for our group   and hence, 269. 
+
+Method Of Investigation:
+
+• Grouped Bar Chart is being plotted to get a clear understanding of prices of products when       grouped by categories.
+
+• Histogram with normal distribution overlay and Boxplot will be plotted to clean the data and     get a visual understanding of differences in prices. 
+
+• Q-Q Plot will help us in checking the normality of the data.
+
+• The paired Sample T-Test is the ideal test in this case to find out if the average prices   of the products of Coles and Woolworths is same.
+
+• This particular test is chosen for the investigation on a rationale that the price of a product   at coles will be inherently linked to the price of the same product at woolworths.
+
+## Load Packages and Data
+
+```{r}
+
+library(readxl) #To read the data
+library(dplyr) #Data manipulation
+library(knitr) #To create dynamic reports
+library(ggplot2) #To view complex plots 
+library(tidyr)#To tidy the data
+library(car) #qqplot 
+library(magrittr) #To use pipe operator
+
+#Reading the Data
+prices_data <- read_xlsx("Groceriesdata.xlsx")
+dim(prices_data)
+
+#Preparing data for analysis
+prices_data <- prices_data %>% mutate(Difference = Coles - Woolworths)
+prices_data
+
+gathered_supermarts <- prices_data %>% 
+gather("Coles","Woolworths",key = "Store", value = "price")
+gathered_supermarts$Store <- as.factor(gathered_supermarts$Store)
+
+
+```
+
+## Summary Statistics
+
+• The mean Coles price is found out to be 10.561 and that for Woolworths is 10.312,therefore the   mean difference(Coles - Woolworths) is 0.249 and the standard deviation is 2.417 which gave us   an indication that Woolworths is cheaper than Coles. 
+
+• From the bar chart,we understood the prices of Coles and Woolworths vary with categories. 
+
+• In three categories,Woolworths is more expensive than Coles: Meat and Seafood, Entertainment     and International, Drinks and Tobacco.
+
+• In all the other categories,Coles is found to be expensive. 
+
+• When plotted a histogram with a normal distribution overlay of differences of the prices it is   found that the graph is right skewed. 
+
+• A Category wise Boxplot has been plotted and it clears shows that price of Drinks and Tobacco    is much higher in Coles than that of Woolworths, price of the categories Fridge, Bakery and      Entertainment and International is almost the same in both stores.
+
+• As per the Q-Q plot, it's been observed that the data isn't normally                             distributed.
+
+• However,collection of 269 observations which is greater than 30 has given a scope to assume      normality as per Central Limit Theorem. 
+
+• In order to remove the outliers,boxplot of differences of prices has been plotted.
+
+• The upper fence is calculated to be 1.28 and lower fence to be -0.8. 
+
+• All the values above and below the fences have been removed which lead towards getting a tidy    data without the outliers to perform the hypothesis testing.
+
+```{r}
+# Summary of prices (Supermarkets)
+
+summary_table <- gathered_supermarts %>% group_by(Store) %>% 
+summarise(Min = min(price,na.rm = TRUE) %>% round(2),
+            Q1 = quantile(price,probs = .25,na.rm = TRUE) %>% round(2),
+            Median = median(price, na.rm = TRUE) %>% round(2),
+            Q3 = quantile(price,probs = .75,na.rm = TRUE) %>% round(2),
+            Max = max(price,na.rm = TRUE) %>% round(2),
+            Mean = mean(price, na.rm = TRUE) %>% round(3),
+            SD = sd(price, na.rm = TRUE) %>% round(3),
+            n = n())
+summary_table
+
+## Summary of difference in prices (Supermarkets)
+
+price_difference_summary <- prices_data %>% 
+summarise(Min = min(Difference,na.rm = TRUE) %>% 
+          round(2),Q1 = quantile(Difference,probs = .25,na.rm = TRUE) %>% 
+          round(2),Median = median(Difference, na.rm = TRUE) %>% 
+          round(2),Q3 = quantile(Difference,probs = .75,na.rm = TRUE) %>% 
+          round(2),Max = max(Difference,na.rm = TRUE) %>% 
+          round(2),Mean = mean(Difference, na.rm = TRUE) %>% 
+          round(3),SD = sd(Difference, na.rm = TRUE) %>% 
+          round(3),n = n())
+price_difference_summary
+
+#Summary of Difference grouped by Category
+
+price_difference_summary_category <- prices_data %>% 
+group_by(Category) %>% 
+summarise(Min = min(Difference,na.rm = TRUE) %>% 
+          round(2),Q1 = quantile(Difference,probs = .25,na.rm = TRUE) %>% 
+          round(2),Median = median(Difference, na.rm = TRUE) %>% 
+          round(2),Q3 = quantile(Difference,probs = .75,na.rm = TRUE) %>% 
+          round(2),Max = max(Difference,na.rm = TRUE) %>% 
+          round(2),Mean = mean(Difference, na.rm = TRUE) %>% 
+          round(3),SD = sd(Difference, na.rm = TRUE) %>% 
+          round(3),n = n())
+price_difference_summary_category
+
+#Grouped Barplot to see the difference in PRices
+ggplot(gathered_supermarts, aes(fill=Store, y=price, x=Category))+ 
+geom_bar(position="dodge", stat="identity")+ggtitle("Coles Price Vs Woolworths Price")+ylab("Sum of Prices (AUD)")
+
+#Checking the difference in Prices Visually using Histogram
+x <- seq(min(prices_data$Difference), max(prices_data$Difference))
+mu <- mean(prices_data$Difference)
+sd <- sd(prices_data$Difference)
+prices_data$Difference %>% hist(col="blue", ylim=c(0,0.375), xlab="Price Difference",ylab="Count",main="Coles Price - Woolworths Price(AUD)", prob = TRUE, breaks=10)
+curve(dnorm(x,mu,sd), xlim=c(mu-sd*4, mu+sd*4), col="red", add= TRUE, lwd =2)
+
+#Visualizing the price difference grouped by category, Further Analysis
+
+boxplot(
+  prices_data$Coles,
+  prices_data$Woolworths,
+  ylab = "Price(AUD)",
+  xlab = "Supermarkets",
+  main = "Coles vs Woolworths- Boxplot"
+  )
+axis(1, at = 1:2, labels = c( "Coles","Woolworths"))      
+
+prices_data$Difference %>% boxplot(main= "Coles Price - Woolworths Price",ylab="Difference in Price(AUD)")
+
+#Category wise boxplot
+
+bp <- ggplot(prices_data, aes(x = "", y = Difference))
+bp + geom_boxplot() +
+facet_grid(.~Category) +
+labs(title = "Box Plots of Price Difference by Category",
+       y = "Price Difference",
+       x = "Categories")
+
+
+#Removing the outliers of the differences in prices 
+
+upper_fence <- 1.5*IQR(prices_data$Difference)+0.5
+
+lower_fence <- -1.5*IQR(prices_data$Difference)-0.02
+
+#Removing Outliers based on Category
+
+upper_fence_bhb <- 1.5*(price_difference_summary_category$Q3[1] - price_difference_summary_category$Q1[1]) + price_difference_summary_category$Q3[1]
+
+lower_fence_bhb <- -1.5*(price_difference_summary_category$Q3[1] - price_difference_summary_category$Q1[1]) + price_difference_summary_category$Q1[1]
+
+upper_fence_bkry <- 1.5*(price_difference_summary_category$Q3[2] - price_difference_summary_category$Q1[2]) + price_difference_summary_category$Q3[2]
+
+lower_fence_bkry <- -1.5*(price_difference_summary_category$Q3[2] - price_difference_summary_category$Q1[2]) + price_difference_summary_category$Q1[2]
+
+upper_fence_dnt <- 1.5*(price_difference_summary_category$Q3[3] - price_difference_summary_category$Q1[3]) + price_difference_summary_category$Q3[3]
+
+lower_fence_dnt <- -1.5*(price_difference_summary_category$Q3[3] - price_difference_summary_category$Q1[3])+ price_difference_summary_category$Q1[3]
+
+upper_fence_ent <- 1.5*(price_difference_summary_category$Q3[4] - price_difference_summary_category$Q1[4]) + price_difference_summary_category$Q3[4]
+
+lower_fence_ent <- -1.5*(price_difference_summary_category$Q3[4] - price_difference_summary_category$Q1[4]) + price_difference_summary_category$Q1[4]
+
+upper_fence_frz <- 1.5*(price_difference_summary_category$Q3[5] - price_difference_summary_category$Q1[5]) + price_difference_summary_category$Q3[5]
+
+lower_fence_frz <- -1.5*(price_difference_summary_category$Q3[5] - price_difference_summary_category$Q1[5]) + price_difference_summary_category$Q1[5]
+
+upper_fence_frg <- 1.5*(price_difference_summary_category$Q3[6] - price_difference_summary_category$Q1[6]) + price_difference_summary_category$Q3[6]
+
+lower_fence_frg <- -1.5*(price_difference_summary_category$Q3[6] - price_difference_summary_category$Q1[6]) + price_difference_summary_category$Q1[6]
+
+upper_fence_hnp <- 1.5*(price_difference_summary_category$Q3[7] - price_difference_summary_category$Q1[7]) + price_difference_summary_category$Q3[7]
+
+lower_fence_hnp <- -1.5*(price_difference_summary_category$Q3[7] - price_difference_summary_category$Q1[7]) + price_difference_summary_category$Q1[7]
+
+upper_fence_mns <- 1.5*(price_difference_summary_category$Q3[8] - price_difference_summary_category$Q1[8]) + price_difference_summary_category$Q3[8]
+
+lower_fence_mns <- -1.5*(price_difference_summary_category$Q3[8] - price_difference_summary_category$Q1[8]) + price_difference_summary_category$Q1[8]
+
+upper_fence_ptry <- 1.5*(price_difference_summary_category$Q3[9] - price_difference_summary_category$Q1[9]) + price_difference_summary_category$Q3[9]
+
+lower_fence_ptry <- -1.5*(price_difference_summary_category$Q3[9] - price_difference_summary_category$Q1[9]) + price_difference_summary_category$Q1[9]
+
+#Tidying the Data (removing outliers)
+
+price_data_tidy <- prices_data %>% filter(Difference < upper_fence &
+                                          Difference > lower_fence)
+
+gathered_supermarts_tidy <- gathered_supermarts %>% filter(Difference < upper_fence & Difference > lower_fence)
+
+#Boxplot after removing outliers
+
+price_data_tidy$Difference %>% boxplot(main= "Coles Price - Woolworths Price after removing outliers",ylab="Difference in Price(AUD)")
+
+#QQ-plot to check normality
+price_data_tidy$Difference %>% qqPlot(distribution = "norm",main = "Coles Price-Woolworths Price",ylab = "Difference in Price")
+
+```
+
+## Hypothesis Test
+
+• Hypothesis test has been conducted to check whether the mean difference of prices is            significant enough to comment if Woolworths is cheaper than Coles.
+
+NULL HYPOTHESIS:
+
+• Mean of Coles and Woolworths price are equal. 
+    
+    μΔ= mu1 - mu2
+    
+    H0:μΔ=0
+    
+ALTERNATE HYPOTHESIS:
+
+• Mean of Coles and Woolworths price are not equal. 
+    
+    μΔ= mu1 - mu2
+    
+    HA:μΔ≠0
+
+This hypothesis would be tested using a paired t-test.
+
+Assumptions-
+• Assumption of normality to be met for conducting t-test.
+
+Normality-
+• As the sample size (269) is very large compared to the minimum sample of 30,normality of data   can safely be assumed as per the Central Limit Theorem.
+
+```{r}
+#General T-Test
+
+gathered_supermarts <- gathered_supermarts %>% 
+filter( Difference < upper_fence & Difference > lower_fence)
+price_t_test <- t.test(price ~ Store,
+                       data = gathered_supermarts,
+                       paired = T,conf.level = .95,
+                       alternative = "two.sided")
+
+#Removing the ouliers from each category
+
+gathered_supermarts_bhb <-  gathered_supermarts %>% 
+                            filter(Category == "Baby,Health& Beauty" & Difference < upper_fence_bhb & Difference > lower_fence_bhb)
+gathered_supermarts_bkry <-  gathered_supermarts %>% 
+                             filter(Category == "Bakery"
+& Difference < upper_fence_bkry & Difference > lower_fence_bkry)
+gathered_supermarts_dnt <-  gathered_supermarts %>% 
+                            filter(Category == "Drinks & Tobacco"
+& Difference < upper_fence_dnt & Difference > lower_fence_dnt)
+gathered_supermarts_ent <-  gathered_supermarts %>% 
+                            filter(Category == "Entertainment & International" & Difference < upper_fence_ent & Difference > lower_fence_ent)
+gathered_supermarts_frz <-  gathered_supermarts %>% 
+                            filter(Category == "Freezer"
+                                   & Difference < upper_fence_frz & Difference > lower_fence_frz)
+gathered_supermarts_frg <-  gathered_supermarts %>% 
+                            filter(Category == "Fridge" &  Difference < upper_fence_frg & Difference > lower_fence_frg)
+gathered_supermarts_hnp <-  gathered_supermarts %>% 
+                            filter(Category == "Household & Pet" & Difference < upper_fence_hnp & Difference > lower_fence_hnp)
+gathered_supermarts_mns <-  gathered_supermarts %>% 
+                            filter(Category == "Meat & Seafood" & Difference < upper_fence_mns & Difference > lower_fence_mns)
+gathered_supermarts_ptry <-  gathered_supermarts %>% 
+                            filter(Category == "Pantry"& Difference < upper_fence_ptry & Difference > lower_fence_ptry)
+
+#T-test for each category
+
+t.test(price ~ Store,
+                       data = gathered_supermarts_bhb,
+                       paired = T,conf.level = .95,
+                       alternative = "two.sided")
+
+t.test(price ~ Store,
+                       data = gathered_supermarts_bkry,
+                       paired = T,conf.level = .95,
+                       alternative = "two.sided")
+
+t.test(price ~ Store,
+                       data = gathered_supermarts_dnt,
+                       paired = T,conf.level = .95,
+                       alternative = "two.sided")
+
+t.test(price ~ Store,
+                       data = gathered_supermarts_ent,
+                       paired = T,conf.level = .95,
+                       alternative = "two.sided")
+
+t.test(price ~ Store,
+                       data = gathered_supermarts_frz,
+                       paired = T,conf.level = .95,
+                       alternative = "two.sided")
+
+t.test(price ~ Store,
+                       data = gathered_supermarts_frg,
+                       paired = T,conf.level = .95,
+                       alternative = "two.sided")
+
+t.test(price ~ Store,
+                       data = gathered_supermarts_hnp,
+                       paired = T,conf.level = .95,
+                       alternative = "two.sided")
+
+t.test(price ~ Store,
+                       data = gathered_supermarts_mns,
+                       paired = T,conf.level = .95,
+                       alternative = "two.sided")
+
+t.test(price ~ Store,
+                       data = gathered_supermarts_ptry,
+                       paired = T,conf.level = .95,
+                       alternative = "two.sided")
+```
+
+## Interpretation
+
+• GENERAL TEST:
+     p < 0.001
+     alpha = 0.05
+     Confidence Interval = 95%
+As p < alpha, there is statistically significant difference between the mean prices of       Coles and Woolworths. Therefore, we can safely reject the null hypothesis.
+
+• Test conducted categorically:
+     alpha = 0.05
+     Confidence Interval = 95%
+
+• Interpretation of Null Hypothesis with respect to categories: 
+
+Baby,Health and Beauty,Drinks and Tobacco,Entertainment and International,Pantry reject null hypothesis where as Bakery,Freezer,Fridge,Household and Pets,Meat and Seafood fail to reject Null Hypothesis.
+
+## Discussion 
+
+• The findings from our analysis helped us in arriving at a conclusion that statiscally,the price   of products in Coles is significantly higher than that of Woolworths . 
+
+• The average price of products in Coles is approximately $2.42 more than that of                  Woolworths.
+
+• Nevertheless,a few categories like Bakery, Freezer, Fridge, Household and Pets, Meat and         Seafood the mean prices in both stores is equal. 
+
+• The strenghth of our analysis is that category wise hypothesis test has been conducted in order   to give a robust understanding. 
+
+• The limitation is that we wish to improve on increasing sample size per category so that the     anaylsis would have been even more accurate.
+
+• In future, we would like to consider specials and offers to be able to make a better judgement   in terms of business perspective of both the stores.
